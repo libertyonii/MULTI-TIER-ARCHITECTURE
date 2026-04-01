@@ -132,15 +132,6 @@ Add these secrets to your GitHub repository (Settings → Secrets → Actions):
 
 The pipeline runs automatically on every push to `main` that touches `deploy.sh`, `nsg-config.sh`, or the workflow file. You can also trigger any action manually from the Actions tab.
 
-## Cost estimate (South Africa North)
-
-| Resource              | Monthly cost |
-|-----------------------|-------------|
-| 3 × Standard_B2s VMs | ~$90        |
-| 3 × Standard SSD disks| ~$5        |
-| 1 × Standard public IP| ~$4        |
-| VNet / NSGs           | Free        |
-| **Total**             | **~$99/month** |
 
 Deallocate VMs when not in use to stop compute charges:
 ```bash

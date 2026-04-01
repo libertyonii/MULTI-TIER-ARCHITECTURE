@@ -1,0 +1,5 @@
+﻿*.pem
+*.key
+*.env
+.azure/
+C:\Users\ONI\.ssh\id_rsa
