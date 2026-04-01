@@ -5,6 +5,7 @@
 set -euo pipefail
 
 # ── Load IPs saved by deploy.sh, or set them manually below ──────────────────
+# shellcheck source=/dev/null
 if [[ -f /tmp/multitier-ips.env ]]; then
     source /tmp/multitier-ips.env
 else
@@ -32,7 +33,8 @@ FAILED=0
 # Run a command on a remote host
 remote() {
     local host=$1; shift
-    ssh $SSH_OPTS "$ADMIN_USER@$host" "$@"
+    # shellcheck disable=SC2029
+    ssh "$SSH_OPTS" "$ADMIN_USER@$host" "$@"
 }
 
 # Ping test
@@ -62,7 +64,7 @@ echo ""
 
 # Check SSH into Web VM works first
 log "Checking SSH access to Web VM..."
-if ssh $SSH_OPTS "$ADMIN_USER@$WEB_PUB" "echo ok" | grep -q "ok"; then
+if ssh "$SSH_OPTS" "$ADMIN_USER@$WEB_PUB" "echo ok" | grep -q "ok"; then
     pass "SSH to Web VM"
 else
     fail "SSH to Web VM — check public IP and WEBNSG Allow-SSH-Inbound rule"
@@ -79,7 +81,7 @@ ping_test "$WEB_PUB" "$DB_PRV" "fail" "Web → DB (blocked)"
 
 # App → DB via jump through Web (should succeed)
 log "App → DB — ping via SSH jump (expect: pass)"
-if ssh $SSH_OPTS -J "$ADMIN_USER@$WEB_PUB" "$ADMIN_USER@$APP_PRV" \
+if ssh "$SSH_OPTS" -J "$ADMIN_USER@$WEB_PUB" "$ADMIN_USER@$APP_PRV" \
     "ping -c 3 -W 5 $DB_PRV > /dev/null 2>&1"; then
     pass "App → DB — pass (correct)"
     PASSED=$((PASSED + 1))
@@ -90,7 +92,7 @@ fi
 
 # DB → App via double jump (should be blocked)
 log "DB → App — ping via double jump (expect: blocked)"
-if ssh $SSH_OPTS -J "$ADMIN_USER@$WEB_PUB,$ADMIN_USER@$APP_PRV" "$ADMIN_USER@$DB_PRV" \
+if ssh "$SSH_OPTS" -J "$ADMIN_USER@$WEB_PUB,$ADMIN_USER@$APP_PRV" "$ADMIN_USER@$DB_PRV" \
     "ping -c 3 -W 5 $APP_PRV > /dev/null 2>&1"; then
     fail "DB → App — pass (NSG not blocking — check Deny-DB-To-App rule)"
     FAILED=$((FAILED + 1))
