@@ -23,7 +23,6 @@ DB_VM="db-vm"
 VM_SIZE="Standard_B2s"       # change if unavailable in your region
 VM_IMAGE="Ubuntu2204"
 ADMIN_USER="libo"
-SSH_KEY_PATH="$HOME/.ssh/id_rsa.pub"
 
 WEB_NSG="WEBNSG"
 APP_NSG="APPNSG"
