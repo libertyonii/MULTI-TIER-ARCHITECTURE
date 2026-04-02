@@ -23,6 +23,7 @@ DB_VM="db-vm"
 VM_SIZE="Standard_B2s"       # change if unavailable in your region
 VM_IMAGE="Ubuntu2204"
 ADMIN_USER="libo"
+SSH_KEY_PATH="$HOME/.ssh/id_rsa.pub"
 
 WEB_NSG="WEBNSG"
 APP_NSG="APPNSG"
@@ -58,20 +59,29 @@ create_vnet() {
         --name "$VNET_NAME" \
         --address-prefix "$VNET_PREFIX" \
         --location "$LOCATION" \
-        --output none
+        --output none 2>/dev/null || log "VNet already exists, skipping."
     ok "VNet: $VNET_NAME"
 
     log "Creating subnets..."
     for entry in "$WEB_SUBNET:$WEB_PREFIX" "$APP_SUBNET:$APP_PREFIX" "$DB_SUBNET:$DB_PREFIX"; do
         name="${entry%%:*}"
         prefix="${entry##*:}"
-        az network vnet subnet create \
+        existing=$(az network vnet subnet show \
             --resource-group "$RESOURCE_GROUP" \
             --vnet-name "$VNET_NAME" \
             --name "$name" \
-            --address-prefix "$prefix" \
-            --output none
-        ok "  Subnet: $name ($prefix)"
+            --query name -o tsv 2>/dev/null || true)
+        if [[ -n "$existing" ]]; then
+            ok "  Subnet already exists, skipping: $name"
+        else
+            az network vnet subnet create \
+                --resource-group "$RESOURCE_GROUP" \
+                --vnet-name "$VNET_NAME" \
+                --name "$name" \
+                --address-prefix "$prefix" \
+                --output none
+            ok "  Subnet: $name ($prefix)"
+        fi
     done
 }
 
@@ -83,7 +93,7 @@ create_nsgs() {
             --resource-group "$RESOURCE_GROUP" \
             --name "$nsg" \
             --location "$LOCATION" \
-            --output none
+            --output none 2>/dev/null || true
         ok "  NSG: $nsg"
     done
 
@@ -190,49 +200,64 @@ create_nsgs() {
 # Step 4 — VMs
 create_vms() {
     log "Creating Web VM (public IP)..."
-    az vm create \
-        --resource-group "$RESOURCE_GROUP" \
-        --name "$WEB_VM" \
-        --image "$VM_IMAGE" \
-        --size "$VM_SIZE" \
-        --admin-username "$ADMIN_USER" \
-        --generate-ssh-keys \
-        --vnet-name "$VNET_NAME" \
-        --subnet "$WEB_SUBNET" \
-        --public-ip-sku Standard \
-        --nsg "" \
-        --output none
-    ok "Web VM created"
+    existing=$(az vm show -g "$RESOURCE_GROUP" -n "$WEB_VM" --query name -o tsv 2>/dev/null || true)
+    if [[ -n "$existing" ]]; then
+        ok "Web VM already exists, skipping."
+    else
+        az vm create \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$WEB_VM" \
+            --image "$VM_IMAGE" \
+            --size "$VM_SIZE" \
+            --admin-username "$ADMIN_USER" \
+            --generate-ssh-keys \
+            --vnet-name "$VNET_NAME" \
+            --subnet "$WEB_SUBNET" \
+            --public-ip-sku Standard \
+            --nsg "" \
+            --output none
+        ok "Web VM created"
+    fi
 
     log "Creating App VM (no public IP)..."
-    az vm create \
-        --resource-group "$RESOURCE_GROUP" \
-        --name "$APP_VM" \
-        --image "$VM_IMAGE" \
-        --size "$VM_SIZE" \
-        --admin-username "$ADMIN_USER" \
-        --generate-ssh-keys \
-        --vnet-name "$VNET_NAME" \
-        --subnet "$APP_SUBNET" \
-        --public-ip-address "" \
-        --nsg "" \
-        --output none
-    ok "App VM created"
+    existing=$(az vm show -g "$RESOURCE_GROUP" -n "$APP_VM" --query name -o tsv 2>/dev/null || true)
+    if [[ -n "$existing" ]]; then
+        ok "App VM already exists, skipping."
+    else
+        az vm create \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$APP_VM" \
+            --image "$VM_IMAGE" \
+            --size "$VM_SIZE" \
+            --admin-username "$ADMIN_USER" \
+            --generate-ssh-keys \
+            --vnet-name "$VNET_NAME" \
+            --subnet "$APP_SUBNET" \
+            --public-ip-address "" \
+            --nsg "" \
+            --output none
+        ok "App VM created"
+    fi
 
     log "Creating DB VM (no public IP)..."
-    az vm create \
-        --resource-group "$RESOURCE_GROUP" \
-        --name "$DB_VM" \
-        --image "$VM_IMAGE" \
-        --size "$VM_SIZE" \
-        --admin-username "$ADMIN_USER" \
-        --generate-ssh-keys \
-        --vnet-name "$VNET_NAME" \
-        --subnet "$DB_SUBNET" \
-        --public-ip-address "" \
-        --nsg "" \
-        --output none
-    ok "DB VM created"
+    existing=$(az vm show -g "$RESOURCE_GROUP" -n "$DB_VM" --query name -o tsv 2>/dev/null || true)
+    if [[ -n "$existing" ]]; then
+        ok "DB VM already exists, skipping."
+    else
+        az vm create \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$DB_VM" \
+            --image "$VM_IMAGE" \
+            --size "$VM_SIZE" \
+            --admin-username "$ADMIN_USER" \
+            --generate-ssh-keys \
+            --vnet-name "$VNET_NAME" \
+            --subnet "$DB_SUBNET" \
+            --public-ip-address "" \
+            --nsg "" \
+            --output none
+        ok "DB VM created"
+    fi
 }
 
 # Step 5 — Print IPs
