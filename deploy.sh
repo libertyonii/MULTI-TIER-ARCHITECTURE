@@ -20,7 +20,7 @@ DB_PREFIX="10.0.3.0/24"
 WEB_VM="web-vm"
 APP_VM="app-vm"
 DB_VM="db-vm"
-VM_SIZE="Standard_B2s"       # change if unavailable in your region
+VM_SIZE="Standard_B2s"
 VM_IMAGE="Ubuntu2204"
 ADMIN_USER="libo"
 
@@ -33,7 +33,6 @@ log() { echo -e "\033[1;34m[INFO]\033[0m $*"; }
 ok()  { echo -e "\033[1;32m[ OK ]\033[0m $*"; }
 err() { echo -e "\033[1;31m[ERR ]\033[0m $*"; exit 1; }
 
-# Check Azure CLI is installed and logged in
 check_deps() {
     command -v az >/dev/null 2>&1 || err "Azure CLI not found. Install from https://aka.ms/installazurecli"
     az account show >/dev/null 2>&1 || az login
@@ -62,16 +61,16 @@ create_vnet() {
     ok "VNet: $VNET_NAME"
 
     log "Creating subnets..."
+    existing_cidrs=$(az network vnet subnet list \
+        --resource-group "$RESOURCE_GROUP" \
+        --vnet-name "$VNET_NAME" \
+        --query "[].addressPrefix" -o tsv 2>/dev/null || true)
+
     for entry in "$WEB_SUBNET:$WEB_PREFIX" "$APP_SUBNET:$APP_PREFIX" "$DB_SUBNET:$DB_PREFIX"; do
         name="${entry%%:*}"
         prefix="${entry##*:}"
-        existing=$(az network vnet subnet show \
-            --resource-group "$RESOURCE_GROUP" \
-            --vnet-name "$VNET_NAME" \
-            --name "$name" \
-            --query name -o tsv 2>/dev/null || true)
-        if [[ -n "$existing" ]]; then
-            ok "  Subnet already exists, skipping: $name"
+        if echo "$existing_cidrs" | grep -qF "$prefix"; then
+            ok "  Subnet CIDR already exists, skipping: $name ($prefix)"
         else
             az network vnet subnet create \
                 --resource-group "$RESOURCE_GROUP" \
@@ -281,7 +280,6 @@ print_ips() {
     echo "  Jump to DB:    ssh -J $ADMIN_USER@$WEB_PUB,$ADMIN_USER@$APP_PRV $ADMIN_USER@$DB_PRV"
     echo ""
 
-    # Save IPs for verify-connectivity.sh
     cat > /tmp/multitier-ips.env <<EOF
 WEB_PUB=$WEB_PUB
 WEB_PRV=$WEB_PRV
