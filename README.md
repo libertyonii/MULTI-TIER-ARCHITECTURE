@@ -36,7 +36,7 @@ Internet
 | Resource group   | Multi-tier-archi       |
 | Location         | South Africa North     |
 | VNet             | multivnet (10.0.0.0/16)|
-| VM size          | Standard_B2s           |
+| VM size          | Standard_D2s_v3           |
 | OS               | Ubuntu 22.04 LTS       |
 | Admin user       | libo                   |
 
@@ -63,12 +63,10 @@ Internet
 | Internet | DB          | any            | DENY   |
 | DB       | App         | any            | DENY   |
 
-## Quick start
-
 ### 1. Clone and configure
 
 ```bash
-git clone https://github.com/YOUR_ORG/azure-multitier.git
+git clone https://github.com/libertyonii/MULTI-TIER-ARCHITECTURE
 cd azure-multitier
 chmod +x *.sh
 ```
